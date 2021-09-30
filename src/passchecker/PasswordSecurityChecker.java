@@ -16,7 +16,7 @@ import java.nio.file.Paths;
 public class PasswordSecurityChecker {
     
     private List<String> arguments  = new ArrayList<>();
-    private List<String> mostKnownPasswords;
+    private List<String> mostKnownPasswords = new LinkedList<>();
     private String password;
     private int time;
     private int trys;
@@ -48,6 +48,16 @@ public class PasswordSecurityChecker {
         }
     }
     
+    @Override
+    public String toString(){
+        String pass = "Password: " + password + "\n";
+        String args = "Argomenti:\n";
+        for(int i = 0;i < arguments.size();i++){
+            args += arguments.get(i) + " ";
+        }
+        return pass + args;
+    }
+    
     /**
      * Questo metodo trasforma un array di stringhe in una lista di stringhe.
      * @param array array di stringhe da trasformare.
@@ -67,14 +77,14 @@ public class PasswordSecurityChecker {
      * 100000 password più utilizzate al mondo.
      */
     private void loadMostKnownPasswords(){
-        Path file = Paths.get("100000-most-known-passwords.txt");
+        Path file = Paths.get("./100000-most-known-passwords.txt");
+        // getClass().getResourceAsStream("/data/100000-most-known-passwords.txt");
         if(Files.exists(file) && Files.isReadable(file)){
-            
             try{
-                mostKnownPasswords = new LinkedList<>();
                 mostKnownPasswords = Files.readAllLines(file);
             }catch(IOException e){
-                System.out.println("File passato inesistente o non leggibile");
+                System.err.println("Errore");
+                System.err.println(e.getStackTrace());
             }
 	}else{
             System.out.println("File passato inesistente o non leggibile");
@@ -137,6 +147,12 @@ public class PasswordSecurityChecker {
     public static void main(String[] args) {
         PasswordSecurityChecker psc = new PasswordSecurityChecker(args);
         
-        System.out.println(psc.password);
+        /*for(int i = 0;i < psc.mostKnownPasswords.size();i++){
+            System.out.println(psc.mostKnownPasswords.get(i));
+        }*/
+        
+        for(String s : psc.mostKnownPasswords){
+            System.out.println(s);
+	}
     }
 }
