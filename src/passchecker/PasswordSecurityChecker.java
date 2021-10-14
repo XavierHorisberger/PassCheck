@@ -1,15 +1,20 @@
 package passchecker;
 
+import java.io.BufferedReader;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.io.IOException;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
- *
+ * La classe PasswordSecurityChecker serve per cercare di forzare una password
+ * passata dall'utente usando tre modi differeti: dictionary attack, brute force
+ * e cercare di forzarla usando gli argomenti che l'utente passa insieme alla 
+ * password.
  * @author Xavier Horisberger
  * @verions 30.09.2021
  */
@@ -17,9 +22,16 @@ public class PasswordSecurityChecker {
     
     private List<String> arguments  = new ArrayList<>();
     private List<String> mostKnownPasswords = new LinkedList<>();
+    
     private String password;
-    private int time;
-    private int trys;
+    private String foundPassword;
+    
+    private long time;
+    private long tries;
+    
+    private boolean found = false;
+    
+    private String[] characters;
     
     /**
      * Costruttore che istanzia un Oggetto di tipo PasswordSecurityChecker.
@@ -31,6 +43,9 @@ public class PasswordSecurityChecker {
         if(arguments.length == 1){
             loadMostKnownPasswords();
             password = arguments[0];
+            String string = new String(IntStream.rangeClosed(32, 255).toArray(), 0, 224);
+            characters = string.split("");
+			
         }else if(arguments.length >= 1){
             loadMostKnownPasswords();
             password = arguments[0];
@@ -43,8 +58,11 @@ public class PasswordSecurityChecker {
                     this.arguments.remove(i);
                 }
             }
+            String string = new String(IntStream.rangeClosed(32, 255).toArray(), 0, 224);
+            characters = string.split("");
+			
         }else{
-            System.out.println("Passare un array contenente almeno un dato");
+            throw new IllegalArgumentException("Passare un array contenente almeno un dato");
         }
     }
     
@@ -65,9 +83,7 @@ public class PasswordSecurityChecker {
      */
     private List<String> arrayToList(String[] array){
         List<String> list = new LinkedList<>();
-        for(int i = 0;i < array.length;i++){
-            list.add(array[i]);
-        }
+        list.addAll(Arrays.asList(array));
         return list;
     }
     
@@ -77,82 +93,167 @@ public class PasswordSecurityChecker {
      * 100000 password più utilizzate al mondo.
      */
     private void loadMostKnownPasswords(){
-        Path file = Paths.get("./100000-most-known-passwords.txt");
-        // getClass().getResourceAsStream("/data/100000-most-known-passwords.txt");
-        if(Files.exists(file) && Files.isReadable(file)){
-            try{
-                mostKnownPasswords = Files.readAllLines(file);
-            }catch(IOException e){
-                System.err.println("Errore");
-                System.err.println(e.getStackTrace());
+        try{
+            String inputLine;
+            InputStream in = getClass().getResourceAsStream("../data/100000-most-known-passwords.txt"); 
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+            while ((inputLine = reader.readLine()) != null) {
+                mostKnownPasswords.add(inputLine);
             }
-	}else{
-            System.out.println("File passato inesistente o non leggibile");
-	}
+            reader.close();
+        }catch(IOException e){
+            System.err.println("Error reading file");
+        }
     }
     
     /**
      * Questo metodo serve a stampare i tentativi e tempo impiegati a scoprire
      * la password.
      */
-    private void printTrysAndTime(){
+    private void printTimeAndTries(){
         System.out.print("\r");
-        System.out.print("Tentativi: " + trys + " Tempo: " + time);
+        System.out.print("Tries: " + tries + " Time: " + time + " ms");
+        System.out.print("\r");
     }
     
     /**
      * Questo metodo serve a scoprire la password usando la lista di password 
-     * più utilizzate al mondo.
-     * @return un array contenente in prima posizione 1 se ha scoperto la
-     * password o 0 se non l'ha scoperta, e in seconda posizione il tempo che ci
-     * ha impiegato in millisecondi.
+     * più utilizzate al mondo.Mentre lavora stampa anche i tentativi e tempo
+     * impiegato complessivamente dal programma.
      */
-    protected int[] dictionaryDecode(){
-        int[] array = new int[2];
+    protected void dictionaryDecode() {
+        long start;
+        long current;
+        long end; 
         
-        
-        
-        return array;
+        for(String s : mostKnownPasswords){
+            tries++;
+            
+            start = System.currentTimeMillis();
+            if(s.equals(password)){
+                current = System.currentTimeMillis();
+                end = current-start;
+                time += end;
+                foundPassword = s;
+                found = true;
+                break;
+            }
+            current = System.currentTimeMillis();
+            end = current-start;
+            time += end;
+            
+            if(tries % 18 == 0){
+                printTimeAndTries();
+            }
+        }
     }
     
     /**
      * Questo metodo serve a scoprire la password usando la lista di argomenti 
      * passata dall'utente.
-     * @return un array contenente in prima posizione 1 se ha scoperto la
-     * password o 0 se non l'ha scoperta, e in seconda posizione il tempo che ci
-     * ha impiegato in millisecondi.
      */
-    protected int[] argumentsDecode(){
-        int[] array = new int[2];
+    protected void argumentsDecode(){
+        long start;
+        long current;
+        long end;
         
-        
-        
-        return array;
+        for(String s : arguments){
+            tries += 1;
+            
+            start = System.currentTimeMillis();
+            if(s.equals(password)){
+                foundPassword = s;
+                found = true;
+                current = System.currentTimeMillis();
+                end = current-start;
+                time += end;
+                break;
+            }
+            current = System.currentTimeMillis();
+            end = current-start;
+            time += end;
+            
+            if(tries % 20 == 0){
+                printTimeAndTries();
+            }
+        }
     }
     
     /**
      * Questo metodo serve a scoprire la password usando un attacco brute force.
-     * @return un array contenente in prima posizione il tempo che ci
-     * ha impiegato in millisecondi, e in seconda posizione i tentativi che ci
-     * ha impiegato.
+     * @param key lettera da cui parte il brute force, in teoria dovrebbe venir
+     * passato un "" all'inizoi.
      */
-    protected int[] bruteForceDecode(){
-        int[] array = new int[2];
+    protected void bruteForceDecode(String key){
+        long start;
+        long current;
+        long end; 
         
+        start = System.currentTimeMillis();
+        for(String letter : characters){
+            if(found){
+                break;
+            }else{
+                tries++;
+                if((key + letter).equals(password)){
+                    found = true;
+                    foundPassword = key + letter;
+                    break;
+                }else{
+                    if(letter.equals(characters[characters.length-1])){
+                        for(String letter2 : characters){
+                            bruteForceDecode(key + letter2);
+                        }
+                    }
+                }
+            }
+        }
         
-        
-        return array;
+        current = System.currentTimeMillis();
+        end = current-start;
+        time += end;
+    }
+    
+    public void findPassword(){
+        if(arguments.isEmpty()){
+            dictionaryDecode();
+            System.out.print("");
+            if(found){
+                System.out.print("Password trovata: " + foundPassword + " Tentativi: " + tries + " Tempo: " + time);
+                System.out.println();
+            }else{
+                bruteForceDecode("");
+                if(found){
+                    System.out.print("Password trovata: " + foundPassword + " Tentativi: " + tries + " Tempo: " + time);
+                    System.out.println();
+                }
+            }
+        }else{
+            argumentsDecode();
+            System.out.print("");
+            if(found){
+                System.out.print("Password trovata: " + foundPassword + " Tentativi: " + tries + " Tempo: " + time);
+                System.out.println();
+            }else{
+                dictionaryDecode();
+                System.out.print("");
+                if(found){
+                    System.out.print("Password trovata: " + foundPassword + " Tentativi: " + tries + " Tempo: " + time);
+                    System.out.println();
+                }else{
+                    bruteForceDecode("");
+                    System.out.print("");
+                    if(found){
+                        System.out.print("Password trovata: " + foundPassword + " Tentativi: " + tries + " Tempo: " + time);
+                        System.out.println();
+                    }
+                }
+            }
+        }
     }
     
     public static void main(String[] args) {
         PasswordSecurityChecker psc = new PasswordSecurityChecker(args);
-        
-        /*for(int i = 0;i < psc.mostKnownPasswords.size();i++){
-            System.out.println(psc.mostKnownPasswords.get(i));
-        }*/
-        
-        for(String s : psc.mostKnownPasswords){
-            System.out.println(s);
-	}
+        psc.findPassword();
     }
 }
