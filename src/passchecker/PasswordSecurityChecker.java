@@ -14,21 +14,28 @@ import java.util.stream.IntStream;
  * La classe PasswordSecurityChecker serve per cercare di forzare una password
  * passata dall'utente usando tre modi differeti: dictionary attack, brute force
  * e cercare di forzarla usando gli argomenti che l'utente passa insieme alla 
- * password.
+ * password, ovvero: nome, cognome, data di nascita e una parola extra. Tentando
+ * diverse combinazioni tra esse, per provare a forzare la password.
  * @author Xavier Horisberger
  * @verions 30.09.2021
  */
 public class PasswordSecurityChecker {
     
+    /*
+        Ordine argomenti: Nome, Cognome, DataNasicta, ParolaExtra
+        La data deve essere in questo formato: gg.mm.aaaa
+    */
+    private List<String> argumentCombos = new ArrayList<>();
     private List<String> arguments = new ArrayList<>();
     private List<String> mostKnownPasswords = new LinkedList<>();
     
     private String password;
-    private final int MAX_LEN = 10;
+    private final int MAX_LEN = 20;
     private String foundPassword;
     
     private long time;
     private long tries;
+    private long oldTries;
     
     private boolean found;
     
@@ -64,7 +71,11 @@ public class PasswordSecurityChecker {
                     this.arguments.remove(i);
                 }
             }
-            
+            for(String i : this.arguments){
+                this.argumentCombos.add(i);
+                this.argumentCombos.add(i.toLowerCase());
+                this.argumentCombos.add(i.toUpperCase());
+            }
             //Caratteri per brute force
             String string = new String(IntStream.rangeClosed(33,255).toArray(),
                 0,223);
@@ -74,19 +85,6 @@ public class PasswordSecurityChecker {
             String err1 = "Passare un array contenente almeno un dato";
             throw new IllegalArgumentException(err1);
         }
-    }
-    
-    @Override
-    public String toString(){
-        String pass = "Password: " + password + "\n";
-        if(!arguments.isEmpty()){
-            String args = "Argomenti:\n";
-            for(int i = 0;i < arguments.size();i++){
-                args += arguments.get(i) + " ";
-            }
-            return pass + args;
-        }
-        return pass;
     }
     
     /**
@@ -137,6 +135,7 @@ public class PasswordSecurityChecker {
      * impiegato complessivamente dal programma.
      */
     protected void dictionaryDecode() {
+        int incrementor = 10000;
         long start = System.currentTimeMillis();
         for(String s : mostKnownPasswords){
             tries++;
@@ -144,63 +143,15 @@ public class PasswordSecurityChecker {
             if(s.equals(password)){
                 foundPassword = s;
                 found = true;
-                break;
+                return;
             }
-            if(tries % 10000 == 0){
+            if(oldTries < incrementor && tries >= incrementor){
+                incrementor += 10000;
                 printTries();
             }
+            oldTries = tries;
         }
-        long current = System.currentTimeMillis();
-        time += current-start;
-    }
-    
-    /**
-     * Questo metodo serve a scoprire la password usando la lista di argomenti 
-     * passata dall'utente.
-     */
-    protected void argumentsDecode(){
-        long start = System.currentTimeMillis();
-        for(String i : arguments){
-            if(password.equals(i)){
-                tries++;
-                found = true;
-                break;
-            }
-            for(String j : arguments){
-                if(password.equals(i+j)){
-                    tries++;
-                    found = true;
-                    break;
-                }else if(password.equals(j+i)){
-                    tries++;
-                    found = true;
-                    break;
-                }else if(password.equals(i.toLowerCase()+j.toLowerCase())){
-                    tries++;
-                    found = true;
-                    break;
-                }else if(password.equals(j.toLowerCase()+i.toLowerCase())){
-                    tries++;
-                    found = true;
-                    break;
-                }else if(password.equals(i.toUpperCase()+j.toUpperCase())){
-                    tries++;
-                    found = true;
-                    break;
-                }else if(password.equals(j.toUpperCase()+i.toUpperCase())){
-                    tries++;
-                    found = true;
-                    break;
-                }
-                tries += 6;
-                if(tries % 1000 == 0){
-                    printTries();
-                }
-            }
-            tries++;
-        }
-        long current = System.currentTimeMillis();
-        time += current-start;
+        time += System.currentTimeMillis()-start;
     }
     
     /**
@@ -209,22 +160,26 @@ public class PasswordSecurityChecker {
      * passato un "" all'inizoi.
      */
     public void bruteForceDecode(String keys){
+        int incrementor = 100000;
+        long start = System.currentTimeMillis();
         if(keys.length() < MAX_LEN){
             for(String c : characters){
                 tries++;
                 if(!found && (keys+c).equals(password)){
                     found = true;
                     foundPassword = keys+c;
-                    break;
+                    return;
                 }else if(!found){
                     bruteForceDecode(keys + c);
-                    
-                    if(tries % 100000 == 0){
+                    if(oldTries < incrementor && tries >= incrementor){
+                        incrementor += 100000;
                         printTries();
                     }
+                    oldTries = tries;
                 }
             }
         }
+        time += System.currentTimeMillis()-start;
     }
     
     public void finalPrint(){
@@ -252,50 +207,216 @@ public class PasswordSecurityChecker {
                 }
             }
         }
-        /*if(arguments.isEmpty()){
-            dictionaryDecode();
-            System.out.print("");
-            if(found){
-                finalPrint();
-            }else{
-                bruteForceDecode("");
-                System.out.print("");
-                if(found){
-                    finalPrint();
-                    System.out.println();
-                }
-            }
+    }
+    
+    //---------------------------------------------------------------------------------------------------------------------
+    
+    /**
+     * Questo metodo prova a scoprire la password usando la lista di argomenti 
+     * passata dall'utente.
+     */
+    protected void argumentsDecode(){
+        if(arguments.isEmpty()){
+            return;
+        }
+        String firstN = "";
+        String firstC = "";
+        if(arguments.size() >= 2){
+            firstN = arguments.get(0).substring(0,1).toUpperCase();
+            firstC = arguments.get(1).substring(0,1).toUpperCase();
         }else{
-            argumentsDecode();
-            System.out.print("");
-            if(found){
-                finalPrint();
-                System.out.println();
-            }else{
-                dictionaryDecode();
-                System.out.print("");
+            firstN = arguments.get(0).substring(0,1).toUpperCase();
+        }
+        
+        int incrementor = 100;
+        long start = System.currentTimeMillis();
+        for(String i : argumentCombos){
+            if(password.equals(i)){
+                tries++;
+                found = true;
+                foundPassword = i;
+                return;
+            }
+            tries++;
+            if(password.equals(firstN+i)){
+                tries++;
+                found = true;
+                foundPassword = firstN+i;
+                return;
+            }
+            tries++;
+            if(password.equals(firstC+i)){
+                tries++;
+                found = true;
+                foundPassword = firstC+i;
+                return;
+            }
+            tries++;
+            for(String j : argumentCombos){
+                if(password.equals(i+j)){
+                    tries++;
+                    found = true;
+                    foundPassword = i+j;
+                    return;
+                }
+                tries++;
+            }
+            if(oldTries < incrementor && tries >= incrementor){
+                incrementor += 100;
+                printTries();
+            }
+            oldTries = tries;
+        }
+        
+        /*
+        
+        //combinazioni specifiche con tutti i dati
+        if(arguments.size() == 4 && !found){
+            for(int i = 1;i <= 3;i++){
+                tryPasswords(arguments.get(0),arguments.get(1),
+                    arguments.get(3),i);
                 if(found){
-                    finalPrint();
-                }else{
-                    bruteForceDecode("");
-                    System.out.print("");
+                    return;
+                }
+                tryPasswords(arguments.get(0),arguments.get(1),
+                    arguments.get(3).toLowerCase(),i);
+                if(found){
+                    return;
+                }
+                tryPasswords(arguments.get(0),arguments.get(1),
+                    arguments.get(3).toUpperCase(),i);
+                if(found){
+                    return;
+                }
+                if(oldTries < incrementor && tries >= incrementor){
+                    incrementor += 100;
+                    printTries();
+                }
+                oldTries = tries;
+            }
+        }
+        
+        
+        
+        //combinazioni specifiche con Nome, Cognome e Nascita
+        if(arguments.size() >= 3 && !found){
+            //estrazione anno da data o si tiene il dato di partenza se la data
+            //non è formattata correttamente
+            List<String> dates = arrayToList(arguments.get(2).split("[.]"));
+            for(int i = 1;i <= 3;i++){
+                if(!(dates.size() == 3)){
+                    dates.add(arguments.get(2));
+                    dates.add(arguments.get(2));
+                }
+                for(int j = 0;j < dates.size();j++){
                     if(found){
-                        finalPrint();
+                        return;
+                    }else{
+                        tryPasswords(arguments.get(0),arguments.get(1),
+                            dates.get(j),i);
                     }
+                }
+                if(oldTries < incrementor && tries >= incrementor){
+                    incrementor += 100;
+                    printTries();
+                }
+                oldTries = tries;
+            }
+        }
+        
+        //combinazioni specifiche tra nome e cognome
+        if(arguments.size() >= 2 && !found){
+            for(int i = 1;i <= 3;i++){
+                for(int j = 0;j < argumentCombos.size()-1;j++){
+                    String s5 = argumentCombos.get(0).substring(0, i)
+                        .concat(argumentCombos.get(1).substring(0, i))
+                        .concat(extra);
+
+                    tryPasswords(arguments.get(0),arguments.get(1),"",i);
+                    if(found){
+                        return;
+                    }
+                    if(oldTries < incrementor && tries >= incrementor){
+                        incrementor += 100;
+                        printTries();
+                    }
+                    oldTries = tries;
                 }
             }
         }*/
+        
+        time += System.currentTimeMillis()-start;
     }
     
+    protected void tryPasswords(String first, String second, String extra, 
+        int index){
+        System.out.println(index);
+        if(first.length() >= index && second.length() >= index){
+            String s1 = first.substring(0, index)
+                .concat(second.substring(0, index)).concat(extra);
+            System.out.println(s1);
+            if(s1.equals(password) ){
+                tries++;
+                found = true;
+                foundPassword = s1;
+                return;
+            }
+            tries++;
+            String s2 = first.substring(0, index).toLowerCase()
+                .concat(second.substring(0, index).toLowerCase()).concat(extra);
+            System.out.println(s2);
+            if(s2.equals(password) ){
+                tries++;
+                found = true;
+                foundPassword = s2;
+                return;
+            }
+            tries++;
+            String s3 = first.substring(0, index).toUpperCase()
+                .concat(second.substring(0, index).toUpperCase()).concat(extra);
+            System.out.println(s3);
+            if(s3.equals(password)){
+                tries++;
+                found = true;
+                foundPassword = s3;
+                return;
+            }
+            tries++;
+            String s4 = first.substring(0, index).toLowerCase()
+                .concat(second.substring(0, index).toUpperCase()).concat(extra);
+            System.out.println(s4);
+            if(s4.equals(password)){
+                tries++;
+                found = true;
+                foundPassword = s4;
+                return;
+            }
+            tries++;
+            String s5 = first.substring(0, index).toUpperCase()
+                .concat(second.substring(0, index).toLowerCase()).concat(extra);
+            System.out.println(s5);
+            if(s5.equals(password)){
+                tries++;
+                found = true;
+                foundPassword = s5;
+                return;
+            }
+            tries++;
+        }
+    }
+
     public static void main(String[] args) {
         PasswordSecurityChecker psc = new PasswordSecurityChecker(args);
         //psc.findPassword();
-        //psc.dictionaryDecode();
-        psc.bruteForceDecode("");
+        psc.argumentsDecode();
+        /*psc.bruteForceDecode("");*/
         if(psc.found){
-            System.out.println("Found: " + psc.foundPassword);
+            System.out.println("\rFound: " + psc.foundPassword + " Tries: " + psc.tries + " Time: " + psc.time);
         }else{
-            System.out.println("Inculati");
+            System.out.println("\rInculati");
         }
+        /*for(String s : psc.arguments){
+            System.out.println(s);
+        }*/
     }
 }
