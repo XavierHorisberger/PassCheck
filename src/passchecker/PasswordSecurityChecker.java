@@ -40,7 +40,9 @@ public class PasswordSecurityChecker {
     
     private boolean found;
     
-    private List<String> characters = new ArrayList<>();
+    private List<String> characters = new LinkedList<>();
+    
+    private String help;
     
     /**
      * Costruttore che istanzia un Oggetto di tipo PasswordSecurityChecker.
@@ -51,20 +53,26 @@ public class PasswordSecurityChecker {
     public PasswordSecurityChecker(String[] arguments) 
         throws IllegalArgumentException{
         
+        //Help
+        help += "Using:\npassare come argomenti da linea di comando ";
+        help += "almeno un argomento di lungehzza minore di " + MAX_LEN;
+        help += " che sarà la password da scoprire, i parametri seguenti";
+        help += " verranno trattati come Nome, Cognome, Data di Nascita e";
+        help += " parola extra (in quell'ordine), altri parametri non ";
+        help += "verranno presi in considerazione";
+        
         if(arguments.length >= 1){
-            //password
+            //Password
             if(arguments[0].length() <= MAX_LEN){
                 password = arguments[0];
             }else{
-                String err = "Passare una password con lunghezza";
-                err += "minore di: " + MAX_LEN;
-                throw new IllegalArgumentException(err);
+                throw new IllegalArgumentException(help);
             }
             
-            //password più conosciute
+            //Password più conosciute
             loadMostKnownPasswords();
             
-            //Primi 4 argomenti
+            //Salvare i primi 4 argomenti
             this.arguments = arrayToList(arguments);
             this.arguments.remove(0);
             if(this.arguments.size() >= 5){
@@ -82,10 +90,9 @@ public class PasswordSecurityChecker {
             //Caratteri per brute force
             String string = new String(IntStream.rangeClosed(33,255).toArray(),
                 0,223);
-            characters = arrayToList(string.split(""));	
+            characters = arrayToList(string.split(""));
         }else{
-            String err = "Passare un array contenente almeno un dato";
-            throw new IllegalArgumentException(err);
+            throw new IllegalArgumentException(help);
         }
     }
     
@@ -138,7 +145,38 @@ public class PasswordSecurityChecker {
     public void finalPrint(){
         System.out.print("Password trovata: " + foundPassword);
         System.out.print(" Tentativi: " + tries + " Tempo: ");
-        System.out.print(time);
+        System.out.print(time + " ms");
+    }
+    
+    /**
+     * Questo metodo serve a fare diverse combinazioni tra il nome, cognome e
+     * la parola passata, in base a cosa viene passato. Queste combinazioni
+     * vengono inserite nella lista di combinazioni temporane.
+     * @param n nome
+     * @param s cognome
+     * @param w parola
+     */
+    private void addCombos(String name, String surname, String word){
+        if(name.equals("")){
+            argumentCombosTemp.add(word);
+            argumentCombosTemp.add(word.toLowerCase());
+            argumentCombosTemp.add(word.toUpperCase());
+        }else if(surname.equals("")){
+            argumentCombosTemp.add(name+word);
+            argumentCombosTemp.add(name.toLowerCase()+word);
+            argumentCombosTemp.add(name.toUpperCase()+word);
+            argumentCombosTemp.add(word+name);
+            argumentCombosTemp.add(word+name.toLowerCase());
+            argumentCombosTemp.add(word+name.toUpperCase());
+        }else{
+            String[] a = {name,surname};
+            for(String i : a){
+                for(String j : a){
+                    argumentCombosTemp.add(i+j+word);
+                    argumentCombosTemp.add(word+i+j);
+                }
+            }
+        }
     }
     
     /**
@@ -150,12 +188,15 @@ public class PasswordSecurityChecker {
      */
     private List<String> addSubStrings(String word){
         List<String> a = new LinkedList<>();
-        a.add(word.substring(0,1));
         if(word.length() >= 3){
+            a.add(word.substring(0,1));
+            a.add(word.substring(0,2));
             a.add(word.substring(0,3));
+        }else if (word.length() >= 2){
+            a.add(word.substring(0,1));
             a.add(word.substring(0,2));
         }else{
-            a.add(word.substring(0,2));
+            a.add(word.substring(0,1));
         }
         for(String i : a){
             addCombos("","",i);
@@ -163,33 +204,9 @@ public class PasswordSecurityChecker {
         return a;
     }
     
-    /**
-     * Questo metodo serve a fare diverse combinazioni tra il nome, cognome e
-     * la parola passata, in base a cosa viene passato. Queste combinazioni
-     * vengono inserite nella lista di combinazioni temporane.
-     * @param n nome
-     * @param s cognome
-     * @param w parola
-     */
-    private void addCombos(String n, String s, String w){
-        if(n.equals("")){
-            argumentCombosTemp.add(w);
-            argumentCombosTemp.add(w.toLowerCase());
-            argumentCombosTemp.add(w.toUpperCase());
-        }else if(s.equals("")){
-            argumentCombosTemp.add(n+w);
-            argumentCombosTemp.add(n.toLowerCase()+w);
-            argumentCombosTemp.add(w+n);
-            argumentCombosTemp.add(w+n.toLowerCase());
-        }else{
-            String[] a = {n,s};
-            for(String i : a){
-                for(String j : a){
-                    argumentCombosTemp.add(i+j+w);
-                    argumentCombosTemp.add(w+i+j);
-                }
-            }
-        }
+    private void addTempCombosToCombos(){
+        argumentCombos.addAll(argumentCombosTemp);
+        argumentCombosTemp.clear();
     }
     
     /**
@@ -198,48 +215,52 @@ public class PasswordSecurityChecker {
      * nell'argumentsForce.
      */
     private void makeCombos(){
-        List<String> firstLettersName = new LinkedList<>();
+        List<String> firstLettersNames = new LinkedList<>();
         
         //Variazioni per ogni argomento in maiscolo, minuscolo e originale
         for(String i : arguments){
             addCombos("","",i);
         }
+        addTempCombosToCombos();
+        
         //Combinazioni tra ogni argomento minuscolo, maiuscolo e originale
         for(String i : argumentCombos){
             for(String j : argumentCombos){
                 argumentCombosTemp.add(i+j);
             }
         }
-        argumentCombos.addAll(argumentCombosTemp);
-        argumentCombosTemp.clear();
+        addTempCombosToCombos();
         
+        firstLettersNames = new LinkedList<>(addSubStrings(arguments.get(0)));
         if(arguments.size() >= 2){
-            firstLettersName = new LinkedList<>(addSubStrings(arguments.get(0)));
-            firstLettersName.addAll(addSubStrings(arguments.get(1)));
-            firstLettersName = new LinkedList<>(argumentCombosTemp);
-            argumentCombosTemp.clear();
-        }else{
-            firstLettersName = new LinkedList<>(addSubStrings(arguments.get(0)));
-            argumentCombosTemp.clear();
+            firstLettersNames.addAll(addSubStrings(arguments.get(1)));
+            argumentCombos.addAll(firstLettersNames);
         }
+        argumentCombosTemp.clear();
         
         System.out.println("");
         for(String i : argumentCombos){
-            for(String j : firstLettersName){
+            for(String j : firstLettersNames){
+                //Combinazioni singole con i vari caratteri del nome e cognome
                 addCombos(j,"",i);
-                for(String h : firstLettersName){
+                for(String h : firstLettersNames){
+                    //Combinazioni multiple con i vari caratteri del nome e 
+                    //cognome
                     addCombos(j,h,i);
                 }
             }
         }
-        argumentCombos.addAll(argumentCombosTemp);
-        argumentCombosTemp.clear();
+        addTempCombosToCombos();
         
         String[] date = new String[0];
+        String smallYear = "";
         if(arguments.size() >= 3){
             date = arguments.get(2).split("[.]");
+            if(date[2].length() == 4){
+                smallYear = date[2].substring(1,2);
+            }
         }
-        if(arguments.size() >= 3 && date.length == 3){
+        if(arguments.size()>=3 && date.length==3 && smallYear.length()==4){
             //Combinazioni con giorno, mese e anno di nascita
             for(String i : argumentCombos){
                 argumentCombosTemp.add(i+date[0]);
@@ -247,9 +268,9 @@ public class PasswordSecurityChecker {
                 argumentCombosTemp.add(i+date[2]);
                 argumentCombosTemp.add(i+date[0]+date[1]);
                 argumentCombosTemp.add(i+date[0]+date[1]+date[2]);
+                argumentCombosTemp.add(i+smallYear);
             }
-            argumentCombos.addAll(argumentCombosTemp);
-            argumentCombosTemp.clear();
+            addTempCombosToCombos();
             
             argumentCombos.add(date[0]+date[1]);
             argumentCombos.add(date[0]+date[1]+date[2]);
@@ -289,10 +310,9 @@ public class PasswordSecurityChecker {
     
     /**
      * Questo metodo serve a scoprire la password usando un attacco brute force.
-     * @param keys lettera da cui parte il brute force, in teoria dovrebbe venir
-     * passato un "" all'inizo.
+     * @param keys carattere da cui parte il brute force, ovvere ""
      */
-    protected void bruteForceForce(String keys){
+    protected void bruteForce(String keys){
         long start = System.currentTimeMillis();
         if(keys.length() < MAX_LEN){
             for(String c : characters){
@@ -301,10 +321,10 @@ public class PasswordSecurityChecker {
                     endForce(keys + c);
                     return;
                 }else if(!found){
-                    bruteForceForce(keys + c);
                     if(tries % 100000 == 0){
                         printTriesAndTime();
                     }
+                    bruteForce(keys + c);
                 }
             }
         }
@@ -348,10 +368,11 @@ public class PasswordSecurityChecker {
             if(found){
                 finalPrint();
             }else{
-                bruteForceForce("");
+                bruteForce("");
                 System.out.print("");
                 if(found){
                     finalPrint();
+                    System.out.println();
                 }
             }
         }
@@ -375,6 +396,7 @@ public class PasswordSecurityChecker {
             for(String s : psc.argumentCombos){
                 System.out.println(s);
             }*/
+            System.out.println("".length());
         }catch(IllegalArgumentException e){
             System.err.println(e.getMessage());
         }
