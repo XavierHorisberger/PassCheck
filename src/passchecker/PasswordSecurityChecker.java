@@ -11,10 +11,10 @@ import java.util.stream.IntStream;
 
 /**
  * La classe PasswordSecurityChecker serve a scoprire una password fornita
- * dall'utente usando tre metodi differeti: dictionary attack, brute force
- * e cercare di scoprirla usando gli argomenti che l'utente passa insieme alla
- * password (opzionali), ovvero: nome, cognome, data di nascita e una parola 
- * extra. Tentando diverse combinazioni tra esse, a scopo di trovare la 
+ * dall'utente usando tre metodi differeti: dictionary attack, brute force e
+ * cercare di scoprirla usando gli argomenti che l'utente passa insieme alla
+ * password (opzionali), ovvero: nome, cognome, data di nascita e una parola
+ * extra. Tentando diverse combinazioni tra esse, a scopo di trovare la
  * password.
  * @author Xavier Horisberger
  * @verions 02.12.2021
@@ -51,7 +51,7 @@ public class PasswordSecurityChecker {
      * e utilizzati per provare a scoprire la password (solo i primi 4 di essi).
      */
     public PasswordSecurityChecker(String[] arguments)
-            throws IllegalArgumentException {
+        throws IllegalArgumentException {
 
         //Help
         help += "Using:\npassare come argomenti da linea di comando ";
@@ -89,7 +89,7 @@ public class PasswordSecurityChecker {
 
             //Caratteri per brute force
             String string = new String(IntStream.rangeClosed(33, 255).toArray(),
-                    0, 223);
+                0, 223);
             characters = arrayToList(string.split(""));
         } else {
             throw new IllegalArgumentException(help);
@@ -109,7 +109,7 @@ public class PasswordSecurityChecker {
 
     /**
      * Questo metodo serve per inserire il contenuto del file
-     * 100000-most-known-passwords.txt in una lista di stringhe. Questo file 
+     * 100000-most-known-passwords.txt in una lista di stringhe. Questo file
      * contiene le 100000 password più utilizzate al mondo.
      */
     private void loadMostKnownPasswords() {
@@ -162,8 +162,8 @@ public class PasswordSecurityChecker {
 
     /**
      * Questo metodo serve a fare diverse combinazioni tra w1 e w2 con la parola
-     * word passata, in base a quale di queste vengono passate. Queste 
-     * combinazioni vengono inserite nella lista di combinazioni temporane, 
+     * word passata, in base a quale di queste vengono passate. Queste
+     * combinazioni vengono inserite nella lista di combinazioni temporane,
      * ovvero argumentCombosTemp.
      * @param w1 prima parola da concatenare
      * @param w2 seconda parola da concatenare
@@ -217,7 +217,7 @@ public class PasswordSecurityChecker {
             listOfSubStrings.add(word.substring(0, 1));
         }
         for (String i : listOfSubStrings) {
-            addCombos("","",i);
+            addCombos("", "", i);
         }
         return listOfSubStrings;
     }
@@ -244,7 +244,7 @@ public class PasswordSecurityChecker {
             addCombos("", "", i);
         }
         addTempCombosToCombos();
-        
+
         //Combinazioni tra ogni argomento minuscolo, maiuscolo e originale
         for (String i : argumentCombos) {
             for (String j : argumentCombos) {
@@ -261,7 +261,7 @@ public class PasswordSecurityChecker {
         firstLettersNames.clear();
         firstLettersNames.addAll(argumentCombosTemp);
         addTempCombosToCombos();
-        
+
         for (String i : argumentCombos) {
             for (String j : firstLettersNames) {
                 //Combinazioni singole con i vari caratteri del nome e cognome
@@ -274,7 +274,7 @@ public class PasswordSecurityChecker {
             }
         }
         addTempCombosToCombos();
-        
+
         String[] date = new String[0];
         String smallYear = "";
         if (arguments.size() >= 3) {
@@ -283,7 +283,7 @@ public class PasswordSecurityChecker {
                 smallYear = date[2].substring(2, 4);
             }
         }
-        if (arguments.size() >= 3 && date.length == 3 
+        if (arguments.size() >= 3 && date.length == 3
             && smallYear.length() == 2) {
             //Combinazioni con giorno, mese e anno di nascita
             for (String i : argumentCombos) {
@@ -369,14 +369,14 @@ public class PasswordSecurityChecker {
                     return;
                 }
                 tries++;
-                if (tries % 100 == 0) {
+                if (tries % 10000 == 0) {
                     printTriesAndTime();
                 }
             }
             time += System.currentTimeMillis() - start;
         }
         long t1 = System.currentTimeMillis();
-        System.out.println(t1-t);
+        System.out.println(t1 - t);
     }
 
     /**
@@ -388,18 +388,19 @@ public class PasswordSecurityChecker {
         System.out.print("");
         if (found) {
             finalPrint();
-            System.out.println();
+            System.out.println("");
         } else {
             dictionaryForce();
             System.out.print("");
             if (found) {
                 finalPrint();
+                System.out.print("");
             } else {
                 bruteForce("");
                 System.out.print("");
                 if (found) {
                     finalPrint();
-                    System.out.println();
+                    System.out.println("");
                 }
             }
         }
@@ -410,10 +411,8 @@ public class PasswordSecurityChecker {
             //Istanziato un PasswordSecurityChecker basatu sugli argomenti
             //all'interno dell'array di stringhe args.
             PasswordSecurityChecker psc = new PasswordSecurityChecker(args);
-            //psc.findPassword();
-            psc.argumentsForce();
-            System.out.println(psc.argumentCombos.size());
-
+            //Trova password
+            psc.findPassword();
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
         }
