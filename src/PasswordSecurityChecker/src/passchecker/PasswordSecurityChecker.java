@@ -114,7 +114,7 @@ public class PasswordSecurityChecker {
      */
     private void loadMostKnownPasswords() {
         try {
-            String path = "../data/100000-most-known-passwords.txt";
+            String path = "/data/100000-most-known-passwords.txt";
             String inputLine;
             InputStream in = getClass().getResourceAsStream(path);
             InputStreamReader isr = new InputStreamReader(in);
