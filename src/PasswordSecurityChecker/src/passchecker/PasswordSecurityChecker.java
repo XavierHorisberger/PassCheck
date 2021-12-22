@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -16,8 +17,9 @@ import java.util.stream.IntStream;
  * password (opzionali), ovvero: nome, cognome, data di nascita e una parola
  * extra. Tentando diverse combinazioni tra esse, a scopo di trovare la
  * password.
+ *
  * @author Xavier Horisberger
- * @verions 02.12.2021
+ * @verions 22.12.2021
  */
 public class PasswordSecurityChecker {
 
@@ -46,12 +48,13 @@ public class PasswordSecurityChecker {
 
     /**
      * Costruttore che istanzia un Oggetto di tipo PasswordSecurityChecker.
+     *
      * @param arguments argomenti passati da linea di comando. Il primo
      * argomento è la password, gli altri verranno salvati nella lista arguments
      * e utilizzati per provare a scoprire la password (solo i primi 4 di essi).
      */
     public PasswordSecurityChecker(String[] arguments)
-        throws IllegalArgumentException {
+            throws IllegalArgumentException {
 
         //Help
         help += "Using:\npassare come argomenti da linea di comando ";
@@ -70,7 +73,10 @@ public class PasswordSecurityChecker {
             }
 
             //Password più conosciute
+            long start;
+            start = System.currentTimeMillis();
             loadMostKnownPasswords();
+            time += System.currentTimeMillis() - start;
 
             //Salvare i primi 4 argomenti passati
             this.arguments = arrayToList(arguments);
@@ -82,15 +88,17 @@ public class PasswordSecurityChecker {
             }
             //Creare combinazioni con gli argomenti
             if (!this.arguments.isEmpty()) {
-                long start = System.currentTimeMillis();
+                start = System.currentTimeMillis();
                 makeCombos();
                 time += System.currentTimeMillis() - start;
             }
 
             //Caratteri per brute force
+            start = System.currentTimeMillis();
             String string = new String(IntStream.rangeClosed(33, 255).toArray(),
-                0, 223);
+                    0, 223);
             characters = arrayToList(string.split(""));
+            time += System.currentTimeMillis() - start;
         } else {
             throw new IllegalArgumentException(help);
         }
@@ -98,6 +106,7 @@ public class PasswordSecurityChecker {
 
     /**
      * Questo metodo trasforma un array di stringhe in una lista di stringhe.
+     *
      * @param array array di stringhe da trasformare.
      * @return lista contenente gli stessi dati dell'array passato.
      */
@@ -152,12 +161,11 @@ public class PasswordSecurityChecker {
      * Questo metodo aggiunge a argumentCombosTemp il parametro word se rispetta
      * la lunghezza massima dettata dalla costante MAX_LEN, a scopo di ridurre
      * il tempo che il programma impiega.
+     *
      * @param word parola da aggiungere a argumentCombosTemp
      */
     private void add(String word) {
-        if (word.length() <= MAX_LEN) {
-            argumentCombosTemp.add(word);
-        }
+        argumentCombosTemp.add(word);
     }
 
     /**
@@ -165,6 +173,7 @@ public class PasswordSecurityChecker {
      * word passata, in base a quale di queste vengono passate. Queste
      * combinazioni vengono inserite nella lista di combinazioni temporane,
      * ovvero argumentCombosTemp.
+     *
      * @param w1 prima parola da concatenare
      * @param w2 seconda parola da concatenare
      * @param word parola
@@ -201,6 +210,7 @@ public class PasswordSecurityChecker {
      * Questo metodo riceve una stringa e ritorna una lista contenente la prima
      * lettare della stringa all'indice 0, se possibile le prime due all'indice
      * 1, e infine se possibile le prime tre all'indice 2.
+     *
      * @param word parola da suddividere
      * @return lista contenente le varie suddivisioni della stringa
      */
@@ -237,6 +247,7 @@ public class PasswordSecurityChecker {
      * nell'argumentsForce.
      */
     private void makeCombos() {
+        System.out.print("Making combos...");
         List<String> firstLettersNames = new LinkedList<>();
 
         //Variazioni per ogni argomento in maiscolo, minuscolo e originale
@@ -284,7 +295,7 @@ public class PasswordSecurityChecker {
             }
         }
         if (arguments.size() >= 3 && date.length == 3
-            && smallYear.length() == 2) {
+                && smallYear.length() == 2) {
             //Combinazioni con giorno, mese e anno di nascita
             for (String i : argumentCombos) {
                 add(i + date[0]);
@@ -299,15 +310,18 @@ public class PasswordSecurityChecker {
             add(date[0] + date[1] + date[2]);
             addTempCombosToCombos();
         }
+
+        System.out.print("\r");
+        System.out.print("");
     }
 
     /**
      * Questo metodo viene richiamato alla fine di un force, una volta trovata
      * la password.
+     *
      * @param s password trovata
      */
     private void endForce(String s) {
-        tries++;
         foundPassword = s;
         found = true;
     }
@@ -323,6 +337,7 @@ public class PasswordSecurityChecker {
             tries++;
             if (s.equals(password)) {
                 endForce(s);
+                time += System.currentTimeMillis() - start;
                 return;
             }
             if (tries % 1000 == 0) {
@@ -334,25 +349,29 @@ public class PasswordSecurityChecker {
 
     /**
      * Questo metodo serve a scoprire la password usando un attacco brute force.
+     *
      * @param keys carattere da cui parte il brute force, ovvere ""
      */
     protected void bruteForce(String keys) {
-        long start = System.currentTimeMillis();
         if (keys.length() < MAX_LEN) {
+            long start = System.currentTimeMillis();
             for (String c : characters) {
+                start = System.currentTimeMillis();
                 tries++;
                 if (!found && (keys + c).equals(password)) {
                     endForce(keys + c);
+                    time += System.currentTimeMillis() - start;
                     return;
                 } else if (!found) {
                     if (tries % 100000 == 0) {
                         printTriesAndTime();
                     }
+                    time += System.currentTimeMillis() - start;
                     bruteForce(keys + c);
                 }
             }
+            time += System.currentTimeMillis() - start;
         }
-        time += System.currentTimeMillis() - start;
     }
 
     /**
@@ -360,12 +379,12 @@ public class PasswordSecurityChecker {
      * passata dall'utente.
      */
     protected void argumentsForce() {
-        long t = System.currentTimeMillis();
         if (!arguments.isEmpty()) {
             long start = System.currentTimeMillis();
             for (String i : argumentCombos) {
                 if (i.equals(password)) {
                     endForce(i);
+                    time += System.currentTimeMillis() - start;
                     return;
                 }
                 tries++;
@@ -375,8 +394,6 @@ public class PasswordSecurityChecker {
             }
             time += System.currentTimeMillis() - start;
         }
-        long t1 = System.currentTimeMillis();
-        System.out.println(t1 - t);
     }
 
     /**
