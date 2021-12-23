@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -158,9 +157,7 @@ public class PasswordSecurityChecker {
     }
 
     /**
-     * Questo metodo aggiunge a argumentCombosTemp il parametro word se rispetta
-     * la lunghezza massima dettata dalla costante MAX_LEN, a scopo di ridurre
-     * il tempo che il programma impiega.
+     * Questo metodo aggiunge a argumentCombosTemp il parametro word.
      *
      * @param word parola da aggiungere a argumentCombosTemp
      */
@@ -248,6 +245,7 @@ public class PasswordSecurityChecker {
      */
     private void makeCombos() {
         System.out.print("Making combos...");
+
         List<String> firstLettersNames = new LinkedList<>();
 
         //Variazioni per ogni argomento in maiscolo, minuscolo e originale
@@ -286,6 +284,7 @@ public class PasswordSecurityChecker {
         }
         addTempCombosToCombos();
 
+        //Creazione di array contenente i valori della data
         String[] date = new String[0];
         String smallYear = "";
         if (arguments.size() >= 3) {
@@ -317,7 +316,7 @@ public class PasswordSecurityChecker {
 
     /**
      * Questo metodo viene richiamato alla fine di un force, una volta trovata
-     * la password.
+     * la password. Imposta la password trovata a s, e mette found a true;
      *
      * @param s password trovata
      */
@@ -328,12 +327,12 @@ public class PasswordSecurityChecker {
 
     /**
      * Questo metodo serve a scoprire la password usando la lista di password
-     * più utilizzate al mondo.Mentre lavora stampa anche i tentativi e tempo
+     * più utilizzate al mondo. Mentre lavora stampa anche i tentativi e tempo
      * impiegato complessivamente dal programma.
      */
     protected void dictionaryForce() {
-        long start = System.currentTimeMillis();
         for (String s : mostKnownPasswords) {
+            long start = System.currentTimeMillis();
             tries++;
             if (s.equals(password)) {
                 endForce(s);
@@ -343,56 +342,59 @@ public class PasswordSecurityChecker {
             if (tries % 1000 == 0) {
                 printTriesAndTime();
             }
+            time += System.currentTimeMillis() - start;
         }
-        time += System.currentTimeMillis() - start;
     }
 
     /**
      * Questo metodo serve a scoprire la password usando un attacco brute force.
+     * Mentre lavora stampa anche i tentativi e tempo impiegato complessivamente
+     * dal programma.
      *
-     * @param keys carattere da cui parte il brute force, ovvere ""
+     * @param keys carattere da cui parte il brute force, ovvero ""
      */
     protected void bruteForce(String keys) {
+        long start = 0;
         if (keys.length() < MAX_LEN) {
-            long start = System.currentTimeMillis();
+            start = System.currentTimeMillis();
             for (String c : characters) {
-                start = System.currentTimeMillis();
                 tries++;
-                if (!found && (keys + c).equals(password)) {
+                if ((keys + c).equals(password)) {
                     endForce(keys + c);
                     time += System.currentTimeMillis() - start;
                     return;
-                } else if (!found) {
+                } else {
                     if (tries % 100000 == 0) {
                         printTriesAndTime();
                     }
-                    time += System.currentTimeMillis() - start;
+
                     bruteForce(keys + c);
+                    time += System.currentTimeMillis() - start;
                 }
             }
-            time += System.currentTimeMillis() - start;
         }
     }
 
     /**
      * Questo metodo prova a scoprire la password usando la lista di argomenti
-     * passata dall'utente.
+     * passata dall'utente.Mentre lavora stampa anche i tentativi e tempo
+     * impiegato complessivamente dal programma.
      */
     protected void argumentsForce() {
         if (!arguments.isEmpty()) {
-            long start = System.currentTimeMillis();
             for (String i : argumentCombos) {
+                long start = System.currentTimeMillis();
+                tries++;
                 if (i.equals(password)) {
                     endForce(i);
                     time += System.currentTimeMillis() - start;
                     return;
                 }
-                tries++;
                 if (tries % 10000 == 0) {
                     printTriesAndTime();
                 }
+                time += System.currentTimeMillis() - start;
             }
-            time += System.currentTimeMillis() - start;
         }
     }
 
@@ -414,6 +416,7 @@ public class PasswordSecurityChecker {
                 System.out.print("");
             } else {
                 bruteForce("");
+                long t = 0;
                 System.out.print("");
                 if (found) {
                     finalPrint();
